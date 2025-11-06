@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Moon, Sun, Book, Search, Database, Home } from 'lucide-react';
+import { Moon, Sun, Book, Database, Home } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import clsx from 'clsx';
 

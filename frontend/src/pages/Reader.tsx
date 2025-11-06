@@ -21,7 +21,6 @@ export default function Reader() {
   const [loading, setLoading] = useState(true);
   const [showChapterList, setShowChapterList] = useState(false);
   const [index, setIndex] = useState(currentIndex);
-  const [currentPageUrl, setCurrentPageUrl] = useState<string>('');
   const [loadingNextPage, setLoadingNextPage] = useState(false);
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export default function Reader() {
 
   const loadChapter = async (chap: Chapter) => {
     setLoading(true);
-    setCurrentPageUrl(chap.url);
     try {
       // Priority 1: If we have directory name, load directly from directory (fastest, works offline)
       const dirName = (chap.variables?.directoryName as string) || directoryName;
@@ -99,7 +97,6 @@ export default function Reader() {
         content: content.content + '\n' + response.data.content,
         next_url: response.data.next_url,
       });
-      setCurrentPageUrl(content.next_url);
     } catch (error) {
       console.error('Failed to load next page:', error);
     } finally {

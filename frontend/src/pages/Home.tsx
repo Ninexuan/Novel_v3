@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2, BookOpen } from 'lucide-react';
 import { searchApi, exploreApi, bookSourceApi } from '@/services/api';
-import type { SearchResult, ExploreCategory } from '@/types';
+import type { SearchResult } from '@/types';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -11,8 +11,6 @@ export default function Home() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recommendedBooks, setRecommendedBooks] = useState<SearchResult[]>([]);
   const [loadingRecommended, setLoadingRecommended] = useState(false);
-  const [yueyouSourceId, setYueyouSourceId] = useState<number | null>(null);
-  const [categories, setCategories] = useState<ExploreCategory[]>([]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +23,7 @@ export default function Home() {
       await searchApi.searchStream(
         { keyword: keyword.trim(), page: 1 },
         // onResult: 每个书源返回结果时调用
-        (sourceId, sourceName, newResults) => {
+        (_sourceId, _sourceName, newResults) => {
           setResults(prev => [...prev, ...newResults]);
         },
         // onComplete: 所有书源搜索完成时调用
@@ -63,12 +61,9 @@ export default function Home() {
           return;
         }
 
-        setYueyouSourceId(yueyouSource.id);
-
         // 获取分类
         const categoriesResponse = await exploreApi.getCategories(yueyouSource.id);
         const allCategories = categoriesResponse.data;
-        setCategories(allCategories);
 
         setLoadingRecommended(true);
 

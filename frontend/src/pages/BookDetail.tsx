@@ -82,7 +82,7 @@ export default function BookDetail() {
         setLibraryBookId(response.data.book_id);
 
         // If book is downloaded, load from server
-        if (response.data.book && response.data.book.is_downloaded) {
+        if (response.data.book && response.data.book.is_downloaded && response.data.book_id) {
           console.log('Book is downloaded, loading from server...');
           await loadFromServer(response.data.book_id);
           setLoading(false);
