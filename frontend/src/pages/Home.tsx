@@ -120,10 +120,14 @@ export default function Home() {
           <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">
             发现你的下一本好书
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400">
+          <p className="text-xl text-gray-600 dark:text-gray-400 mb-2">
             搜索海量书源，开启阅读之旅
           </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            💡 若搜索无结果，请稍等片刻后重试
+          </p>
         </div>
+        
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="mb-12">

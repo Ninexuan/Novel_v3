@@ -109,47 +109,91 @@ npm run dev
 
 前端应用运行在：`http://localhost:5173`
 
+**注意**：开发环境下，Vite 会自动将 `/api` 请求代理到 `http://localhost:8000`（配置在 `vite.config.ts`）
+
 ### 生产部署
 
-#### 后端部署
+#### 方式一：使用 Nginx（推荐）
+
+**1. 后端部署**
 
 ```bash
-# 1. 上传代码到服务器
+# 上传代码到服务器
 scp -r backend root@your-server:/var/www/novel/
 
-# 2. SSH 连接到服务器
+# SSH 连接到服务器
 ssh root@your-server
 
-# 3. 安装依赖
+# 安装依赖
 cd /var/www/novel/backend
 pip install -r requirements.txt
 
-# 4. 启动服务（生产模式）
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# 5. 开放端口
-sudo ufw allow 8000
+# 启动服务（生产模式）
+nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
 ```
 
-#### 前端部署
+**2. 前端部署**
 
 ```bash
-# 1. 上传代码到服务器
-scp -r frontend root@your-server:/var/www/novel/
+# 在本地构建
+cd frontend
+npm run build
 
-# 2. SSH 连接到服务器
-ssh root@your-server
-
-# 3. 安装依赖
-cd /var/www/novel/frontend
-npm install
-
-# 4. 启动服务
-npm run dev -- --host 0.0.0.0
-
-# 5. 开放端口
-sudo ufw allow 5173
+# 上传构建产物到服务器
+scp -r dist root@your-server:/var/www/novel/frontend/
 ```
+
+**3. 配置 Nginx**
+
+创建 Nginx 配置文件 `/etc/nginx/sites-available/novel`：
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;  # 或使用 IP 地址
+
+    # 前端静态文件
+    location / {
+        root /var/www/novel/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 后端 API 代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+启用配置并重启 Nginx：
+
+```bash
+sudo ln -s /etc/nginx/sites-available/novel /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+#### 方式二：直接运行（开发/测试）
+
+```bash
+# 后端
+cd backend
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# 前端（新终端）
+cd frontend
+npm run dev -- --host 0.0.0.0
+```
+
+访问：`http://your-server-ip:5173`
+
 
 **访问地址**：
 - 前端：`http://your-server-ip:5173`

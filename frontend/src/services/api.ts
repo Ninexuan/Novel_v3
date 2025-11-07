@@ -84,21 +84,41 @@ export const searchApi = {
         throw new Error('Response body is null');
       }
 
+      let buffer = ''; // 累积不完整的数据
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        // 将新数据追加到缓冲区
+        buffer += decoder.decode(value, { stream: true });
+
+        // 按行分割，但保留最后一个不完整的行
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保存最后一个可能不完整的行
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = JSON.parse(line.slice(6));
+            try {
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue; // 跳过空行
 
-            if (data.done) {
-              onComplete();
-            } else if (data.results && data.results.length > 0) {
-              onResult(data.source_id, data.source_name, data.results);
+              const data = JSON.parse(jsonStr);
+
+              if (data.done) {
+                onComplete();
+              } else if (data.error) {
+                // 书源出错，记录日志但继续处理其他书源
+                console.warn(`Source ${data.source_name} error:`, data.error);
+              } else if (data.results && data.results.length > 0) {
+                onResult(data.source_id, data.source_name, data.results);
+              }
+            } catch (parseError) {
+              // JSON 解析失败，记录详细错误
+              console.error('Failed to parse SSE data:', {
+                line: line.substring(0, 100) + '...',
+                error: parseError
+              });
             }
           }
         }
