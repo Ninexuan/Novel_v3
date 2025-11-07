@@ -132,6 +132,15 @@ async def search_books_stream(
                     yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
                 except Exception as e:
                     print(f"Search error in {source.name}: {str(e)}")
+                    # 即使出错也要发送空结果，让前端知道这个书源已完成
+                    event_data = {
+                        'source_id': source.id,
+                        'source_name': source.name,
+                        'results': [],
+                        'done': False,
+                        'error': str(e)
+                    }
+                    yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
 
         # 发送完成信号
         yield f"data: {json.dumps({'done': True})}\n\n"
