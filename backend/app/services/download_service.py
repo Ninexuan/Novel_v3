@@ -180,18 +180,87 @@ class DownloadService:
             raise
     
     @staticmethod
-    def get_download_progress(book_id: int) -> Optional[dict]:
-        """Get download progress for a book"""
-        return DownloadService.active_downloads.get(book_id)
+    async def get_download_progress(db: AsyncSession, book_id: int) -> Optional[dict]:
+        """Get download progress for a book from database and memory"""
+        # First check in-memory status (most up-to-date for active downloads)
+        if book_id in DownloadService.active_downloads:
+            return DownloadService.active_downloads[book_id]
+
+        # Then check database
+        book = await LibraryService.get_book_by_id(db, book_id)
+        if not book:
+            return None
+
+        # Return database status
+        if book.is_downloaded:
+            return {
+                'total_chapters': book.total_chapters,
+                'downloaded_chapters': book.downloaded_chapters,
+                'progress': book.download_progress,
+                'status': 'completed',
+                'message': None
+            }
+        elif book.download_progress > 0:
+            # Was downloading (maybe different worker or server restart)
+            return {
+                'total_chapters': book.total_chapters,
+                'downloaded_chapters': book.downloaded_chapters,
+                'progress': book.download_progress,
+                'status': 'downloading',
+                'message': f'正在下载第 {book.downloaded_chapters + 1} 章'
+            }
+        else:
+            return {
+                'total_chapters': book.total_chapters,
+                'downloaded_chapters': 0,
+                'progress': 0,
+                'status': 'not_started',
+                'message': None
+            }
 
     @staticmethod
-    def get_all_active_downloads() -> Dict[int, dict]:
-        """Get all active downloads"""
-        return DownloadService.active_downloads.copy()
+    async def get_all_active_downloads(db: AsyncSession) -> Dict[int, dict]:
+        """Get all active downloads from database and memory"""
+        from sqlalchemy import select
+        from app.models.library import LibraryBook
+
+        # Get books that are currently downloading (progress > 0 and not completed)
+        stmt = select(LibraryBook).where(
+            LibraryBook.download_progress > 0,
+            LibraryBook.is_downloaded == False
+        )
+        result = await db.execute(stmt)
+        books = result.scalars().all()
+
+        downloads = {}
+        for book in books:
+            # Prefer in-memory status if available (more up-to-date)
+            if book.id in DownloadService.active_downloads:
+                downloads[book.id] = DownloadService.active_downloads[book.id]
+            else:
+                # Use database status
+                downloads[book.id] = {
+                    'total_chapters': book.total_chapters,
+                    'downloaded_chapters': book.downloaded_chapters,
+                    'progress': book.download_progress,
+                    'status': 'downloading',
+                    'message': f'正在下载第 {book.downloaded_chapters + 1} 章'
+                }
+
+        return downloads
 
     @staticmethod
-    def is_downloading(book_id: int) -> bool:
+    async def is_downloading(db: AsyncSession, book_id: int) -> bool:
         """Check if a book is currently being downloaded"""
-        progress = DownloadService.active_downloads.get(book_id)
-        return progress is not None and progress.get('status') == 'downloading'
+        # Check in-memory status first (fastest)
+        if book_id in DownloadService.active_downloads:
+            progress = DownloadService.active_downloads[book_id]
+            return progress.get('status') == 'downloading'
+
+        # Check database status
+        book = await LibraryService.get_book_by_id(db, book_id)
+        if not book:
+            return False
+
+        return book.download_progress > 0 and not book.is_downloaded
 
