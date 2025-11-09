@@ -57,9 +57,9 @@ class DownloadService:
             
             total_chapters = len(chapters)
             DownloadService.active_downloads[book_id]['total_chapters'] = total_chapters
-            
-            # Update database
-            await LibraryService.update_download_progress(db, book_id, 0, total_chapters, 0)
+
+            # Update database with initial progress (1 to mark as started)
+            await LibraryService.update_download_progress(db, book_id, 0, total_chapters, 1)
             
             # Ensure download directory exists
             LibraryService.ensure_download_dir()
@@ -224,7 +224,15 @@ class DownloadService:
         from sqlalchemy import select
         from app.models.library import LibraryBook
 
-        # Get books that are currently downloading (progress > 0 and not completed)
+        downloads = {}
+
+        # First, add all in-memory active downloads (most up-to-date)
+        for book_id, progress_data in DownloadService.active_downloads.items():
+            if progress_data.get('status') == 'downloading':
+                downloads[book_id] = progress_data
+
+        # Then, check database for downloads that might not be in memory
+        # (e.g., after server restart)
         stmt = select(LibraryBook).where(
             LibraryBook.download_progress > 0,
             LibraryBook.is_downloaded == False
@@ -232,13 +240,9 @@ class DownloadService:
         result = await db.execute(stmt)
         books = result.scalars().all()
 
-        downloads = {}
         for book in books:
-            # Prefer in-memory status if available (more up-to-date)
-            if book.id in DownloadService.active_downloads:
-                downloads[book.id] = DownloadService.active_downloads[book.id]
-            else:
-                # Use database status
+            # Only add if not already in downloads (memory takes priority)
+            if book.id not in downloads:
                 downloads[book.id] = {
                     'total_chapters': book.total_chapters,
                     'downloaded_chapters': book.downloaded_chapters,
