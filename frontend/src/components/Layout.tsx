@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Moon, Sun, Book, Database, Home } from 'lucide-react';
+import { Moon, Sun, Book, Database, Home, Download } from 'lucide-react';
 import { useThemeStore } from '@/stores/themeStore';
 import clsx from 'clsx';
 
@@ -10,6 +10,7 @@ export default function Layout() {
   const navItems = [
     { path: '/', icon: Home, label: '首页' },
     { path: '/library', icon: Book, label: '书库' },
+    { path: '/downloads', icon: Download, label: '下载管理' },
     { path: '/sources', icon: Database, label: '书源管理' },
   ];
 

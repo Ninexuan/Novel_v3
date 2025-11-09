@@ -106,6 +106,9 @@ export interface LibraryBookCreate {
 
 export interface DownloadProgress {
   book_id: number;
+  book_name?: string;
+  book_author?: string;
+  book_cover_url?: string;
   total_chapters: number;
   downloaded_chapters: number;
   progress: number;

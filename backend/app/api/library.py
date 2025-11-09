@@ -216,7 +216,21 @@ async def download_book_to_server(
     book = await LibraryService.get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found in library")
-    
+
+    # Check if already downloading
+    if DownloadService.is_downloading(book_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Book is already being downloaded"
+        )
+
+    # Check if already downloaded
+    if book.is_downloaded:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Book is already downloaded"
+        )
+
     # Parse variables
     variables = {}
     if book.variables:
@@ -224,7 +238,7 @@ async def download_book_to_server(
             variables = json.loads(book.variables)
         except:
             pass
-    
+
     # Start download in background
     background_tasks.add_task(
         DownloadService.download_book,
@@ -234,7 +248,7 @@ async def download_book_to_server(
         book.source_id,
         variables
     )
-    
+
     return {"message": "Download started", "book_id": book_id}
 
 
@@ -244,13 +258,16 @@ async def get_download_progress(book_id: int, db: AsyncSession = Depends(get_db)
     book = await LibraryService.get_book_by_id(db, book_id)
     if not book:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found in library")
-    
+
     # Get progress from download service
     progress_data = DownloadService.get_download_progress(book_id)
-    
+
     if progress_data:
         return DownloadProgress(
             book_id=book_id,
+            book_name=book.name,
+            book_author=book.author,
+            book_cover_url=book.cover_url,
             total_chapters=progress_data.get('total_chapters', 0),
             downloaded_chapters=progress_data.get('downloaded_chapters', 0),
             progress=progress_data.get('progress', 0),
@@ -261,12 +278,40 @@ async def get_download_progress(book_id: int, db: AsyncSession = Depends(get_db)
         # Return database info
         return DownloadProgress(
             book_id=book_id,
+            book_name=book.name,
+            book_author=book.author,
+            book_cover_url=book.cover_url,
             total_chapters=book.total_chapters,
             downloaded_chapters=book.downloaded_chapters,
             progress=book.download_progress,
             status='completed' if book.is_downloaded else 'not_started',
             message=None
         )
+
+
+@router.get("/downloads/active", response_model=List[DownloadProgress])
+async def get_all_active_downloads(db: AsyncSession = Depends(get_db)):
+    """Get all active downloads with book information"""
+    active_downloads = DownloadService.get_all_active_downloads()
+
+    result = []
+    for book_id, progress_data in active_downloads.items():
+        # Get book info from database
+        book = await LibraryService.get_book_by_id(db, book_id)
+        if book:
+            result.append(DownloadProgress(
+                book_id=book_id,
+                book_name=book.name,
+                book_author=book.author,
+                book_cover_url=book.cover_url,
+                total_chapters=progress_data.get('total_chapters', 0),
+                downloaded_chapters=progress_data.get('downloaded_chapters', 0),
+                progress=progress_data.get('progress', 0),
+                status=progress_data.get('status', 'unknown'),
+                message=progress_data.get('message')
+            ))
+
+    return result
 
 
 

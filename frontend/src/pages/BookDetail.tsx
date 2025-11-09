@@ -68,6 +68,39 @@ export default function BookDetail() {
     init();
   }, [searchResult]);
 
+  // Poll for download progress if book is in library
+  useEffect(() => {
+    if (!libraryBookId) return;
+
+    const checkDownloadStatus = async () => {
+      try {
+        const response = await libraryApi.getDownloadProgress(libraryBookId);
+        const progress = response.data;
+
+        if (progress.status === 'downloading') {
+          setDownloading(true);
+          setDownloadProgress(progress);
+        } else if (progress.status === 'completed') {
+          setDownloading(false);
+          setDownloadProgress(null);
+        } else if (progress.status === 'failed') {
+          setDownloading(false);
+          setDownloadProgress(progress);
+        }
+      } catch (error) {
+        console.error('Failed to check download status:', error);
+      }
+    };
+
+    // Check immediately
+    checkDownloadStatus();
+
+    // Poll every 2 seconds
+    const interval = setInterval(checkDownloadStatus, 2000);
+
+    return () => clearInterval(interval);
+  }, [libraryBookId]);
+
   const checkFavoriteStatusAndLoadInfo = async () => {
     setLoading(true);
     try {
@@ -266,31 +299,12 @@ export default function BookDetail() {
     }
 
     try {
-      setDownloading(true);
       await libraryApi.downloadToServer(libraryBookId);
-
-      // Poll for progress
-      const interval = setInterval(async () => {
-        try {
-          const response = await libraryApi.getDownloadProgress(libraryBookId);
-          setDownloadProgress(response.data);
-
-          if (response.data.status === 'completed' || response.data.status === 'failed') {
-            clearInterval(interval);
-            setDownloading(false);
-            if (response.data.status === 'completed') {
-              alert('下载完成！');
-            } else {
-              alert('下载失败：' + response.data.message);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to get progress:', error);
-        }
-      }, 1000);
-    } catch (error) {
+      // The polling is now handled by the useEffect hook
+    } catch (error: any) {
       console.error('Failed to start download:', error);
-      alert('下载失败');
+      const errorMessage = error.response?.data?.detail || '下载失败';
+      alert(errorMessage);
       setDownloading(false);
     }
   };

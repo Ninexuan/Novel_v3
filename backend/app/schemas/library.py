@@ -48,6 +48,9 @@ class LibraryBookResponse(BaseModel):
 class DownloadProgress(BaseModel):
     """Schema for download progress"""
     book_id: int
+    book_name: Optional[str] = None
+    book_author: Optional[str] = None
+    book_cover_url: Optional[str] = None
     total_chapters: int
     downloaded_chapters: int
     progress: int  # 0-100

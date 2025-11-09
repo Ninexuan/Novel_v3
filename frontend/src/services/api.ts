@@ -194,6 +194,9 @@ export const libraryApi = {
   getDownloadProgress: (id: number) =>
     api.get<DownloadProgress>(`/library/${id}/download/progress`),
 
+  getAllActiveDownloads: () =>
+    api.get<DownloadProgress[]>('/library/downloads/active'),
+
   getDownloadedChapters: (id: number) =>
     api.get<Chapter[]>(`/library/${id}/chapters`),
 

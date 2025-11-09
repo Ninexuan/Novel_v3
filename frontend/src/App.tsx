@@ -6,6 +6,7 @@ import Library from './pages/Library';
 import BookSources from './pages/BookSources';
 import BookDetail from './pages/BookDetail';
 import Reader from './pages/Reader';
+import Downloads from './pages/Downloads';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="library" element={<Library />} />
           <Route path="sources" element={<BookSources />} />
+          <Route path="downloads" element={<Downloads />} />
           <Route path="book" element={<BookDetail />} />
         </Route>
         <Route path="/reader" element={<Reader />} />

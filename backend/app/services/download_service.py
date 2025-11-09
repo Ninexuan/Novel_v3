@@ -184,3 +184,14 @@ class DownloadService:
         """Get download progress for a book"""
         return DownloadService.active_downloads.get(book_id)
 
+    @staticmethod
+    def get_all_active_downloads() -> Dict[int, dict]:
+        """Get all active downloads"""
+        return DownloadService.active_downloads.copy()
+
+    @staticmethod
+    def is_downloading(book_id: int) -> bool:
+        """Check if a book is currently being downloaded"""
+        progress = DownloadService.active_downloads.get(book_id)
+        return progress is not None and progress.get('status') == 'downloading'
+
